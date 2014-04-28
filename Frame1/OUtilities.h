@@ -16,17 +16,14 @@ using namespace std;
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
-#define PATH_MIN_LENGTH 0.2
+#define PATH_MIN_LENGTH 0.2f
 
+#define FLOAT_PI 3.141592653f
 
 namespace ohday
 {	
 	const DWORD FVFVER = D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1;
 	const DWORD FVFLEAF = D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX4;
-
-	const float c_leaf_v = 1.4f;
-	const float c_leaf_roll = 0.5f;
-	const float c_leaf_falling_time = 7.0f;
 
 	struct OVertex
 	{
@@ -90,10 +87,10 @@ namespace ohday
 
 	struct OMaterialGroup
 	{
-		int material_id_;
-		int texture_id_;
-		int index_start_;
-		int index_length_;
+		int materialId_;
+		int textureId_;
+		int indexStart_;
+		int indexLength_;
 	};
 
 	struct OLight
@@ -110,63 +107,70 @@ namespace ohday
 
 	struct OMesh
 	{
-		IDirect3DVertexBuffer9 * vertex_buffer_;
-		IDirect3DIndexBuffer9 * index_buffer_;
+		IDirect3DVertexBuffer9 * vertexBuffer_;
+		IDirect3DIndexBuffer9 * indexBuffer_;
 
 		vector<OMaterial> materials_;
 		vector<OTexture> textures_;
-		vector<OMaterialGroup> material_groups_;
+		vector<OMaterialGroup> materialGroups_;
 		vector<OInstance> instances_;
 
 
-		int material_index_;
+		int materialIndex_;
 
-		int leaf_index_;
+		int leafIndex_;
 
 
-		int num_vertex_;
-		int num_index_;
+		int numVertex_;
+		int numFace_;
 	};
 
 	struct OSky
 	{
-		IDirect3DVertexBuffer9 * vertex_buffer_;
+		IDirect3DVertexBuffer9 * vertexBuffer_;
 		vector<IDirect3DCubeTexture9*> textures_;
 	};
 
 	struct OLeafMotion
 	{
-		float path_s_, path_e_;
+		float pathS_, pathE_;
 		float scalar1_, scalar2_,  scalar_roll_;
-		float falling_v_;
+		float fallingV_;
 		float rollingW_;
 		float delayTime_;
+		float rotW_;
+
+		float pathXPhi_, pathXW_, pathXScaler_;
+		float pathZPhi_, pathZW_, pathZScaler_;
 	};
 
 
 	struct OLeaves
 	{
-		vector<OLeafVertex> original_vertices_;
+		vector<OLeafVertex> originalVertices_;
 
-		IDirect3DVertexBuffer9 * vertex_buffer_;
-		IDirect3DIndexBuffer9 * index_buffer_;
+		IDirect3DVertexBuffer9 * vertexBuffer_;
+		IDirect3DIndexBuffer9 * indexBuffer_;
 		
 
 		const aiMesh *mesh_;
 
-		int num_vertex_;
-		int num_index_;
-		int num_leaves_;
+		int numVertex_;
+		int numIndex_;
+		int numLeaves_;
 
-		vector<OLeafMotion> leaf_motion_parameters_;
+		int meshIndex_;
+
+
+		vector<OLeafMotion> leafMotionParameters_;
 	};
 
 	class RandomDevice
 	{
 
 	private:
-		int gauss_phase;
-		int seed;
+		int gaussPhase_;
+		int seed_;
 	public:
 		enum e_random_type
 		{
@@ -175,7 +179,7 @@ namespace ohday
 		};
 		RandomDevice()
 		{
-			gauss_phase = 0;
+			gaussPhase_ = 0;
 			ResetSeed();
 		}
 
@@ -183,9 +187,9 @@ namespace ohday
 		{
 			SYSTEMTIME sys;
 			GetLocalTime(&sys);
-			seed = sys.wMilliseconds;
+			seed_ = sys.wMilliseconds;
 
-			srand(seed);
+			srand(seed_);
 		}
 
 		float GetFloatLine(float f_min, float f_max)
@@ -209,12 +213,12 @@ namespace ohday
 				s = v1 * v1 + v2 * v2;
 			} while (s >= 1 || s == 0);
 
-			if(!gauss_phase)
+			if(!gaussPhase_)
 				x = v1 * sqrt(-2 * log(s) / s);
 			else
 				x = v2 * sqrt(-2 * log(s) / s);
 
-			gauss_phase = 1 - gauss_phase;
+			gaussPhase_ = 1 - gaussPhase_;
 
 			x = x * f_S + f_E;
 			return x;
@@ -222,6 +226,60 @@ namespace ohday
 
 
 
+		
+
+	};
+
+	class OWind
+	{
+	public:
+
+		float strengthScaler_;
+		float timeDelta_;
+		float preStrength_;
+		float nextStrength_;
+		int currentStage_;
+
+		RandomDevice randomDevice_;
+
+		D3DXVECTOR3 dir_;
+
+
+		OWind()
+		{
+			strengthScaler_ = 1;
+			timeDelta_ = 5;
+
+			preStrength_ = 0;
+
+			nextStrength_ = randomDevice_.GetFloatLine(0, 5);
+
+			dir_ = D3DXVECTOR3(1, 0, 0);
+		}
+		~OWind()
+		{
+
+		}
+
+
+		float GetStrength(float timeCurrent)
+		{
+			int c = int(timeCurrent / timeDelta_);
+			float lerp = 1 - (timeCurrent - c * timeDelta_) / timeDelta_;
+
+			if(c != currentStage_)
+			{
+				currentStage_ = c;
+
+				preStrength_ = nextStrength_;
+				nextStrength_ = randomDevice_.GetFloatLine(0, 5);
+			}
+
+			float ret = preStrength_ * lerp + nextStrength_ * (1-lerp);
+
+			return strengthScaler_ * ret;
+		}
+		
 		
 
 	};

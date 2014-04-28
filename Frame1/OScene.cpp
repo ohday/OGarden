@@ -7,16 +7,16 @@ namespace ohday
 	{
 		terrain_ = NULL;
 
-		leaf_path_.resize(2);
+		leafPath_.resize(2);
 		
 		ifstream f1("../data/leaf_path.txt");
 		int n;
 		f1 >> n;
 		for(int i = 0; i < 2; i++)
 		{
-			leaf_path_[i].resize(n);
+			leafPath_[i].resize(n);
 			for(int j = 0; j < n; j++)
-				f1 >> leaf_path_[i][j];
+				f1 >> leafPath_[i][j];
 		}
 		f1.close();
 	}
@@ -119,8 +119,8 @@ namespace ohday
 				int num_vertex = pMesh->mNumVertices;
 				int num_face = pMesh->mNumFaces;
 
-				meshes_[i].num_vertex_ = num_vertex;
-				meshes_[i].num_index_ = num_face * 3;
+				meshes_[i].numVertex_ = num_vertex;
+				meshes_[i].numFace_ = num_face;
 
 				// indices buffer
 				device->CreateIndexBuffer(
@@ -128,10 +128,10 @@ namespace ohday
 					D3DUSAGE_WRITEONLY,
 					D3DFMT_INDEX16,
 					D3DPOOL_DEFAULT,
-					&meshes_[i].index_buffer_,
+					&meshes_[i].indexBuffer_,
 					0);
 				WORD *inx;
-				meshes_[i].index_buffer_->Lock(0, 0, (void**)&inx, 0);
+				meshes_[i].indexBuffer_->Lock(0, 0, (void**)&inx, 0);
 				for(int j = 0; j < num_face; j ++)
 				{
 					aiFace *pFace = pMesh->mFaces + j;
@@ -139,7 +139,7 @@ namespace ohday
 					inx[3*j + 1] = pFace->mIndices[1];
 					inx[3*j + 2] = pFace->mIndices[2];
 				}
-				meshes_[i].index_buffer_->Unlock();
+				meshes_[i].indexBuffer_->Unlock();
 
 				// vertex buffer
 				device->CreateVertexBuffer(
@@ -147,11 +147,11 @@ namespace ohday
 					D3DUSAGE_WRITEONLY,
 					FVFVER,
 					D3DPOOL_DEFAULT,
-					&meshes_[i].vertex_buffer_,
+					&meshes_[i].vertexBuffer_,
 					0);
 
 				OVertex * v = NULL;
-				meshes_[i].vertex_buffer_->Lock(0, 0, (void**)&v, 0);
+				meshes_[i].vertexBuffer_->Lock(0, 0, (void**)&v, 0);
 
 					// location
 				for(int j = 0; j < num_vertex; j++)
@@ -182,15 +182,15 @@ namespace ohday
 					}
 				}
 
-				meshes_[i].vertex_buffer_->Unlock();
+				meshes_[i].vertexBuffer_->Unlock();
 
 				// material index
-				meshes_[i].material_index_ = pMesh->mMaterialIndex;
+				meshes_[i].materialIndex_ = pMesh->mMaterialIndex;
 
-				if(textures_[meshes_[i].material_index_].texture1_ != NULL)
+				if(textures_[meshes_[i].materialIndex_].texture1_ != NULL)
 				{
 					bLeaves_[i] = true;
-					meshes_[i].leaf_index_ = leaf_count;
+					meshes_[i].leafIndex_ = leaf_count;
 					leaf_count++;
 				}
 			}
@@ -210,28 +210,43 @@ namespace ohday
 				int num_vertex = pMesh->mNumVertices;
 
 				OLeaves lea;
-				lea.num_vertex_ = num_vertex;
-				lea.num_index_ = pMesh->mNumFaces * 3;
-				lea.num_leaves_ = pMesh->mNumFaces / 8;
+				lea.meshIndex_ = i;
+
+				lea.numVertex_ = num_vertex;
+				lea.numIndex_ = pMesh->mNumFaces * 3;
+				lea.numLeaves_ = pMesh->mNumFaces / 8;
 
 
 				// leaf motion parameters
-				lea.leaf_motion_parameters_.resize(lea.num_leaves_);
-				for(int j = 0; j < lea.num_leaves_; j++)
+				lea.leafMotionParameters_.resize(lea.numLeaves_);
+				for(int j = 0; j < lea.numLeaves_; j++)
 				{
-					lea.leaf_motion_parameters_[j].path_s_ = randomDevice.GetFloatLine(0, 1.0f - PATH_MIN_LENGTH);
-					lea.leaf_motion_parameters_[j].path_e_ = randomDevice.GetFloatLine(lea.leaf_motion_parameters_[j].path_s_ + PATH_MIN_LENGTH, 1.0);
+					lea.leafMotionParameters_[j].pathS_ = randomDevice.GetFloatLine(0, 1.0f - PATH_MIN_LENGTH);
+					lea.leafMotionParameters_[j].pathE_ = randomDevice.GetFloatLine(lea.leafMotionParameters_[j].pathS_ + PATH_MIN_LENGTH, 1.0);
 
-					lea.leaf_motion_parameters_[j].scalar_roll_ = randomDevice.GetFloatLine(0.5f, 1.5f);
-					lea.leaf_motion_parameters_[j].scalar1_ = randomDevice.GetFloatLine(0.5f, 2.5f);
-					lea.leaf_motion_parameters_[j].scalar2_ = randomDevice.GetFloatLine(0.5f, 2.5f);
+					lea.leafMotionParameters_[j].scalar_roll_ = randomDevice.GetFloatLine(0.5f, 1.5f);
+					lea.leafMotionParameters_[j].scalar1_ = randomDevice.GetFloatLine(0.5f, 2.5f);
+					lea.leafMotionParameters_[j].scalar2_ = randomDevice.GetFloatLine(0.5f, 2.5f);
 
-					lea.leaf_motion_parameters_[j].falling_v_ = randomDevice.GetFloatLine(0.5f, 1.5f) * c_leaf_v;
+					lea.leafMotionParameters_[j].fallingV_ = randomDevice.GetFloatLine(1, 2);
 					
-					lea.leaf_motion_parameters_[j].delayTime_ = randomDevice.GetFloatLine(0, 15.0f);
+					lea.leafMotionParameters_[j].delayTime_ = randomDevice.GetFloatLine(0, 15.0f);
+
+					lea.leafMotionParameters_[j].rollingW_ = randomDevice.GetFloatLine(-4, 4);
+
+					lea.leafMotionParameters_[j].rotW_ = randomDevice.GetFloatLine(-4, 4);
+
+					lea.leafMotionParameters_[j].pathXScaler_ = randomDevice.GetFloatLine(-4, 4);
+					lea.leafMotionParameters_[j].pathXW_ = randomDevice.GetFloatLine(0.001f, 1.0f);
+					lea.leafMotionParameters_[j].pathXPhi_ = randomDevice.GetFloatLine(0, 2 * FLOAT_PI);
+
+					lea.leafMotionParameters_[j].pathZScaler_ = randomDevice.GetFloatLine(-4, 4);
+					lea.leafMotionParameters_[j].pathZW_ = randomDevice.GetFloatLine(0.001f, 1.0f);
+					lea.leafMotionParameters_[j].pathZPhi_ = randomDevice.GetFloatLine(0, 2 * FLOAT_PI);
 
 
-					lea.leaf_motion_parameters_[j].rollingW_ = randomDevice.GetFloatLine(0, 4.0f);
+
+
 //					lea.leaf_motion_parameters_[j].rollingW_ = 10;
 				}
 
@@ -239,10 +254,10 @@ namespace ohday
 				lea.mesh_ = pMesh;
 
 				// index_buffer_ 
-				lea.index_buffer_ = meshes_[i].index_buffer_;
+				lea.indexBuffer_ = meshes_[i].indexBuffer_;
 
 				// vertex_buffer_
-				lea.original_vertices_.resize(num_vertex);
+				lea.originalVertices_.resize(num_vertex);
 
 
 				device->CreateVertexBuffer(
@@ -250,16 +265,19 @@ namespace ohday
 					D3DUSAGE_WRITEONLY,
 					FVFLEAF,
 					D3DPOOL_DEFAULT,
-					&lea.vertex_buffer_,
+					&lea.vertexBuffer_,
 					NULL);
 
 				OLeafVertex* v = NULL;
-				lea.vertex_buffer_->Lock(0, 0, (void**)&v, 0);
+				lea.vertexBuffer_->Lock(0, 0, (void**)&v, 0);
 
 				for(int i = 0; i < pMesh->mNumFaces / 8; i++)
 				{
 					D3DXVECTOR3 centerLoc(0, 0, 0);
 					D3DXVECTOR3 centerNor(0, 0, 0);
+
+			
+
 
 					for(int j = 0; j < 8; j++)
 					{
@@ -294,32 +312,33 @@ namespace ohday
 
 						for(int k = 0; k < 3; k++)
 						{
-							v[fv[k]].cx_ = centerLoc[0];
-							v[fv[k]].cy_ = centerLoc[1];
-							v[fv[k]].cz_ = centerLoc[2];
+							int t = fv[k];
+							v[t].cx_ = centerLoc[0];
+							v[t].cy_ = centerLoc[1];
+							v[t].cz_ = centerLoc[2];
 
 							
-							v[fv[k]].nx_  = centerNor[0];
-							v[fv[k]].ny_  = centerNor[1];
-							v[fv[k]].nz_  = centerNor[2];
+							v[t].nx_  = centerNor[0];
+							v[t].ny_  = centerNor[1];
+							v[t].nz_  = centerNor[2];
 
-							v[fv[k]].ovx_ = pMesh->mVertices[fv[k]][0] - centerLoc[0];
-							v[fv[k]].ovy_ = pMesh->mVertices[fv[k]][1] - centerLoc[1];
-							v[fv[k]].ovz_ = pMesh->mVertices[fv[k]][2] - centerLoc[2];
+							v[t].ovx_ = pMesh->mVertices[t][0] - centerLoc[0];
+							v[t].ovy_ = pMesh->mVertices[t][1] - centerLoc[1];
+							v[t].ovz_ = pMesh->mVertices[t][2] - centerLoc[2];
 							 
-							v[fv[k]].alpha_ = 0;
-							v[fv[k]].scalar_ = 1;
+							v[t].alpha_ = 0;
+							v[t].scalar_ = 1;
 
-							v[fv[k]].u_ = pMesh->mTextureCoords[0][fv[k]].x;
-							v[fv[k]].v_ = pMesh->mTextureCoords[0][fv[k]].y;
+							v[t].u_ = pMesh->mTextureCoords[0][t].x;
+							v[t].v_ = pMesh->mTextureCoords[0][t].y;
 
-							v[fv[k]].beta_ = 0;
+							v[t].beta_ = 0;
 
-							lea.original_vertices_[fv[k]] = v[fv[k]];
+							lea.originalVertices_[t] = v[t];
 						}				
 					}
 				}
-				lea.vertex_buffer_->Unlock();
+				lea.vertexBuffer_->Unlock();
 
 				leaves_.push_back(lea);
 			}
@@ -361,11 +380,11 @@ namespace ohday
 			D3DUSAGE_WRITEONLY,
 			FVFVER,
 			D3DPOOL_DEFAULT,
-			&sky_.vertex_buffer_,
+			&sky_.vertexBuffer_,
 			0);
 
 		OVertex *v = NULL;
-		sky_.vertex_buffer_->Lock(0, 0, (void**)&v, 0);
+		sky_.vertexBuffer_->Lock(0, 0, (void**)&v, 0);
 		v[0] = OVertex(-1, 1, 0.9999);
 		v[1] = OVertex(1, 1, 0.9999);
 		v[2] = OVertex(1, -1, 0.9999);
@@ -373,7 +392,7 @@ namespace ohday
 		v[3] = OVertex(-1, 1, 0.9999);
 		v[4] = OVertex(1, -1, 0.9999);
 		v[5] = OVertex(-1, -1, 0.9999);
-		sky_.vertex_buffer_->Unlock();
+		sky_.vertexBuffer_->Unlock();
 
 
 		return true;

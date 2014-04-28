@@ -19,12 +19,16 @@ namespace ohday
 
 		OSky sky_;
 		vector<OMesh> meshes_;
+		vector<D3DXMATRIX> meshWorldMats_;
+
 		vector<OMaterial> materials_;
 		vector<OTexture> textures_;
 
 		vector<OLeaves> leaves_;
+		vector<D3DXMATRIX> leafWorldMats_;
 
-		vector<vector<float>> leaf_path_;
+
+		vector<vector<float>> leafPath_;
 		
 		vector<bool> bLeaves_;
 

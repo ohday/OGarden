@@ -306,6 +306,8 @@ VS_OUTPUT LeafVS(VS_INPUT_LEAF input)
 	else
 		axis = normalize(cross(onor, up));
 	
+	float alpha = input.para1.x;
+	matrix mr = RotAxisAngle(onor, alpha);
 	
 	
 	float beta = input.para3.y;
@@ -316,7 +318,8 @@ VS_OUTPUT LeafVS(VS_INPUT_LEAF input)
 	float3 ov = float3(input.para2.x, input.para2.y, input.para3.x);
 	
 //	ov = mul(ov, mul(mn, mr));
-	ov = mul(ov, mn);
+	ov = mul(ov, mul(mr,mn));
+//	ov = mul(ov, mn);
 	
 	ov *= input.para1.y;
 	

@@ -62,6 +62,7 @@ namespace ohday
 		void ToggleLeavesFalling(bool t);
 
 		
+		OWind wind_;
 
 		float dayTime_;
 		float yearTime_;

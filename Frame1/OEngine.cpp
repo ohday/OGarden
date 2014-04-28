@@ -211,7 +211,7 @@ namespace ohday
 
 
 		hr = d3dDevice_->SetFVF(FVFVER);
-		hr = d3dDevice_->SetStreamSource(0, pSky->vertex_buffer_, 0, sizeof(OVertex));				
+		hr = d3dDevice_->SetStreamSource(0, pSky->vertexBuffer_, 0, sizeof(OVertex));				
 
 		hr = meshEffect_->BeginPass(2);
 
@@ -278,7 +278,7 @@ namespace ohday
 			OMesh *pMesh = &scene_->meshes_[meshId];
 
 
-			int mid = pMesh->material_index_;
+			int mid = pMesh->materialIndex_;
 
 			if(scene_->bLeaves_[meshId])
 			{
@@ -290,11 +290,11 @@ namespace ohday
 					hr = meshEffect_->SetTexture(hTexture1, scene_->textures_[mid].texture1_);
 				}
 
-				int leaf_index = pMesh->leaf_index_;
+				int leaf_index = pMesh->leafIndex_;
 				OLeaves * pLeaves = &scene_->leaves_[leaf_index];
 				hr = d3dDevice_->SetFVF(FVFLEAF);
-				hr = d3dDevice_->SetStreamSource(0, pLeaves->vertex_buffer_, 0, sizeof(OLeafVertex));
-				hr = d3dDevice_->SetIndices(pLeaves->index_buffer_);
+				hr = d3dDevice_->SetStreamSource(0, pLeaves->vertexBuffer_, 0, sizeof(OLeafVertex));
+				hr = d3dDevice_->SetIndices(pLeaves->indexBuffer_);
 
 
 				hr = meshEffect_->BeginPass(3);
@@ -302,11 +302,17 @@ namespace ohday
 					D3DPT_TRIANGLELIST,
 					0,
 					0,
-					pLeaves->num_vertex_,
+					pLeaves->numVertex_,
 					0,
-					pLeaves->num_index_);
-
-				meshEffect_->EndPass();
+					pLeaves->numIndex_);
+				//d3dDevice_->DrawIndexedPrimitive(
+				//	D3DPT_TRIANGLELIST,
+				//	0,
+				//	0,
+				//	pLeaves->numVertex_,
+				//	3 * 8 * 2,
+				//	8);
+				hr = meshEffect_->EndPass();
 			}
 			else
 			{
@@ -317,17 +323,17 @@ namespace ohday
 					hr = meshEffect_->SetTexture(hTexture0, scene_->textures_[mid].texture0_);
 				}
 				hr = d3dDevice_->SetFVF(FVFVER);
-				hr = d3dDevice_->SetStreamSource(0, pMesh->vertex_buffer_, 0, sizeof(OVertex));				
-				hr = d3dDevice_->SetIndices(pMesh->index_buffer_);
+				hr = d3dDevice_->SetStreamSource(0, pMesh->vertexBuffer_, 0, sizeof(OVertex));				
+				hr = d3dDevice_->SetIndices(pMesh->indexBuffer_);
 
 				hr = meshEffect_->BeginPass(0);
 				d3dDevice_->DrawIndexedPrimitive(
 					D3DPT_TRIANGLELIST,
 					0,
 					0,
-					pMesh->num_vertex_,
+					pMesh->numVertex_,
 					0,
-					pMesh->num_index_);
+					pMesh->numFace_);
 
 				meshEffect_->EndPass();
 			}
@@ -550,7 +556,7 @@ namespace ohday
 	void OEngine::UpdateLeaves()
 	{
 		static bool toggle = true;
-		if(GetAsyncKeyState('F') & 0x8000f)
+		if((GetAsyncKeyState('F') & 0x8000f) && toggle)
 		{
 			ToggleLeavesFalling(toggle);
 			toggle = !toggle;
@@ -576,15 +582,15 @@ namespace ohday
 			OLeaves * pLeaves = &scene_->leaves_[i];
 			OLeafVertex * pVertex = NULL;
 
-			pLeaves->vertex_buffer_->Lock(0, pLeaves->num_vertex_ * sizeof(OLeafVertex), (void**)&pVertex, D3DLOCK_NOOVERWRITE);
+			pLeaves->vertexBuffer_->Lock(0, pLeaves->numVertex_ * sizeof(OLeafVertex), (void**)&pVertex, D3DLOCK_NOOVERWRITE);
 
-			for(int j = 0; j < pLeaves->num_vertex_; j++)
+			for(int j = 0; j < pLeaves->numVertex_; j++)
 			{
 				pVertex[j].scalar_ = leafScalar_;
 
 			}
 
-			pLeaves->vertex_buffer_->Unlock();
+			pLeaves->vertexBuffer_->Unlock();
 			
 		}
 	}
@@ -660,8 +666,19 @@ namespace ohday
 
 	void OEngine::UpdateFallingLeaves()
 	{
-		time_t timeCurrent = clock();
-		float seconds = float(timeCurrent - timeFallingStart_) / CLOCKS_PER_SEC;
+		time_t currentTimeClock = clock();
+
+		static time_t lastTimeClock = currentTimeClock;
+
+
+		float lastSeconds = float(currentTimeClock - lastTimeClock) / CLOCKS_PER_SEC;
+
+		float seconds = float(currentTimeClock - timeFallingStart_) / CLOCKS_PER_SEC;
+
+		float windStrength = wind_.GetStrength(seconds);
+//		float windStrength = 0.1;
+
+
 
 		HRESULT hr = S_OK;
 
@@ -670,12 +687,16 @@ namespace ohday
 			OLeaves* pLeaves = &scene_->leaves_[i];
 			
 			OLeafVertex * pVertex = NULL;
-			
-			hr = pLeaves->vertex_buffer_->Lock(0, pLeaves->num_vertex_ * sizeof(OLeafVertex), (void**)&pVertex, D3DLOCK_NOOVERWRITE);
+			OLeafVertex * pOVertex = &pLeaves->originalVertices_[0];
+			hr = pLeaves->vertexBuffer_->Lock(0, pLeaves->numVertex_ * sizeof(OLeafVertex), (void**)&pVertex, D3DLOCK_NOOVERWRITE);
+
+			vector<bool> v(pLeaves->numVertex_, false);
+
 
 			for(int j = 0; j < pLeaves->mesh_->mNumFaces; j++)
 			{
-				OLeafMotion * pLeafMotion = &pLeaves->leaf_motion_parameters_[j / 8];
+
+				OLeafMotion * pLeafMotion = &pLeaves->leafMotionParameters_[j / 8];
 
 				aiFace* pFace = pLeaves->mesh_->mFaces + j;
 
@@ -683,37 +704,54 @@ namespace ohday
 				{
 					int t = pFace->mIndices[k];
 					
-					if(pVertex[t].cz_ > 0.001f && seconds > pLeafMotion->delayTime_)
+					if(!v[t] && pVertex[t].cz_ > 0.001f && seconds > pLeafMotion->delayTime_)
 					{
+						v[t] = true;
+
 						float fallTime = seconds - pLeafMotion->delayTime_;
+						
 						// 垂直方向（对树叶来说是z方向），匀速下落, 
-						pVertex[t].cz_ = pLeaves->original_vertices_[t].cz_ - pLeafMotion->falling_v_ * fallTime;
+			//			pVertex[t].cz_ = pLeaves->originalVertices_[t].cz_ - pLeafMotion->fallingV_ * fallTime;
+						pVertex[t].cz_ -= pLeafMotion->fallingV_ * lastSeconds;
+
 
 						// xy平面，遵循轨迹
+						float vx = pLeafMotion->pathXScaler_ * sin(pLeafMotion->pathXW_ * fallTime + pLeafMotion->pathXPhi_);
+						float vz = pLeafMotion->pathZScaler_ * sin(pLeafMotion->pathZW_ * fallTime + pLeafMotion->pathZPhi_);
 
-						float fTimeLerper = pVertex[t].cz_ / pLeaves->original_vertices_[t].cz_;
-						if(fTimeLerper > 1)
-							fTimeLerper = 1;
-						if(fTimeLerper < 0)
-							fTimeLerper = 0;
+						pVertex[t].cx_ += vx * lastSeconds;
+						pVertex[t].cy_ += vz * lastSeconds;
 
-						float pathLerper = pLeafMotion->path_s_ * fTimeLerper + pLeafMotion->path_e_ * (1 - fTimeLerper);
-						int pathIndex = int(scene_->leaf_path_[0].size() * pathLerper);
-						int pathStart = int(scene_->leaf_path_[0].size() * pLeafMotion->path_s_);
+						//float fTimeLerper = pVertex[t].cz_ / pLeaves->originalVertices_[t].cz_;
+						//if(fTimeLerper > 1)
+						//	fTimeLerper = 1;
+						//if(fTimeLerper < 0)
+						//	fTimeLerper = 0;
 
-						pVertex[t].cx_ = pLeaves->original_vertices_[t].cx_ + pLeafMotion->scalar1_ * (scene_->leaf_path_[0][pathIndex] - scene_->leaf_path_[0][pathStart]);
-						pVertex[t].cy_ = pLeaves->original_vertices_[t].cy_ + pLeafMotion->scalar2_ * (scene_->leaf_path_[1][pathIndex] - scene_->leaf_path_[1][pathStart]);
+						//float pathLerper = pLeafMotion->pathS_ * fTimeLerper + pLeafMotion->pathE_ * (1 - fTimeLerper);
+						//int pathIndex = int(scene_->leafPath_[0].size() * pathLerper);
+						//int pathStart = int(scene_->leafPath_[0].size() * pLeafMotion->pathS_);
+
+//						pVertex[t].cx_ = pLeaves->originalVertices_[t].cx_ + pLeafMotion->scalar1_ * (scene_->leafPath_[0][pathIndex] - scene_->leafPath_[0][pathStart]);
+//						pVertex[t].cy_ = pLeaves->originalVertices_[t].cy_ + pLeafMotion->scalar2_ * (scene_->leafPath_[1][pathIndex] - scene_->leafPath_[1][pathStart]);
 
 						// 翻滚运动
 						pVertex[t].beta_ = pLeafMotion->rollingW_ * fallTime;
+						pVertex[t].alpha_ = pLeafMotion->rotW_ * fallTime;
+
+
+						// 风中运动
+						pVertex[t].cx_ += wind_.dir_.x * lastSeconds * windStrength;
+						pVertex[t].cy_ += wind_.dir_.z * lastSeconds * windStrength;
+
 					}
 
 
 				}
 			}
-			hr = pLeaves->vertex_buffer_->Unlock();
+			hr = pLeaves->vertexBuffer_->Unlock();
 			
-
+			lastTimeClock = currentTimeClock;
 
 // 			for(int j = 0; j < pLeaves->num_vertex_; j++)
 // 			{
