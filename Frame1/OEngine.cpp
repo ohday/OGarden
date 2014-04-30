@@ -473,8 +473,8 @@ namespace ohday
 			yearTime_ += yearTimeStep;
 		}
 
-		if(yearTime_ > 1.0f)
-			yearTime_ = 0.0f;
+		//if(yearTime_ > 1.0f)
+		//	yearTime_ = 0.0f;
 
 	}
 
@@ -597,35 +597,86 @@ namespace ohday
 
 	void OEngine::UpdateLeafParameters()
 	{
-		UpdateLeafLerper();
+		//UpdateLeafTextureLerper();
 
 
-		// first test leaf scalar
-		if(yearTime_ < 0.25)
-		{
-			leafScalar_ = yearTime_ / 0.25;
-			return;
-		}
+		//// first test leaf scalar
+		//if(yearTime_ < 0.25)
+		//{
+		//	leafScalar_ = yearTime_ / 0.25;
+		//	return;
+		//}
 
-		if(yearTime_ < 0.75)
-		{
-			leafScalar_ = 1.0;
-			return;
-		}
+		//if(yearTime_ < 0.75)
+		//{
+		//	leafScalar_ = 1.0;
+		//	return;
+		//}
 
-		if(yearTime_ < 1.0)
-		{
-			leafScalar_ = (1.0 - yearTime_) / 0.25;
-			return;
-		}
+		//if(yearTime_ < 1.0)
+		//{
+		//	leafScalar_ = (1.0 - yearTime_) / 0.25;
+		//	return;
+		//}
 
 		// falling function
+		float timeStep = 0.2f;
+		static bool bFallingStarted = false;
 
 
+		if(yearTime_ < 0.2f)
+		{
+			leafScalar_ = yearTime_ / timeStep;
 
+			leafLerper_[0] = 1;
+			leafLerper_[1] = 0;
+		}
+		else if(yearTime_ < 0.3f)
+		{
+			leafScalar_ = 1.0f;
+
+			leafLerper_[0] = 1;
+			leafLerper_[1] = 0;
+		}
+		else if(yearTime_ < 0.5f)
+		{
+			leafScalar_ = 1.0f;
+
+			leafLerper_[0] = 1 - (yearTime_ - 0.3f) / timeStep;
+			leafLerper_[1] = 1 - leafLerper_[0];
+		}
+		else if(yearTime_ < 0.7f)
+		{
+			leafScalar_ = 1.0f;
+
+			leafLerper_[0] = 0;
+			leafLerper_[1] = 1;
+		}
+		else if(yearTime_ < 1.0f)
+		{
+			leafScalar_ = 1.0f;
+
+			leafLerper_[0] = 0;
+			leafLerper_[1] = 1;
+
+			if(!bFallingStarted)
+			{
+				bFallingStarted = true;
+				ToggleLeavesFalling(true);
+			}			
+		}
+		else
+		{
+			ToggleLeavesFalling(false);
+			bFallingStarted = false;
+
+
+			ResetLeaves();
+			yearTime_ = 0;
+		}
 	}
 
-	void OEngine::UpdateLeafLerper()
+	void OEngine::UpdateLeafTextureLerper()
 	{
 		if(yearTime_ < 0.25)
 		{
@@ -675,7 +726,7 @@ namespace ohday
 
 		float seconds = float(currentTimeClock - timeFallingStart_) / CLOCKS_PER_SEC;
 
-		float windStrength = wind_.GetStrength(seconds);
+		float windStrength = wind_.GetStrength(seconds) * 0.1;
 //		float windStrength = 0.1;
 
 
@@ -778,6 +829,27 @@ namespace ohday
 
 //			hr = pLeaves->vertex_buffer_->Unlock();
 
+		}
+	}
+
+	void OEngine::ResetLeaves()
+	{
+		HRESULT hr = S_OK;
+
+		for(int i = 0; i < scene_->leaves_.size(); i++)
+		{
+			OLeaves* pLeaves = &scene_->leaves_[i];
+
+			OLeafVertex * pVertex = NULL;
+			OLeafVertex * pOVertex = &pLeaves->originalVertices_[0];
+
+
+			hr = pLeaves->vertexBuffer_->Lock(0, pLeaves->numVertex_ * sizeof(OLeafVertex), (void**)&pVertex, D3DLOCK_NOOVERWRITE);
+			for(int j = 0; j < pLeaves->numVertex_; j++)
+			{
+				pVertex[j] = pOVertex[j];
+			}
+			hr = pLeaves->vertexBuffer_->Unlock();
 		}
 	}
 

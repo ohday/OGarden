@@ -54,13 +54,14 @@ namespace ohday
 
 		void UpdateLeafParameters();
 
-		void UpdateLeafLerper();
+		void UpdateLeafTextureLerper();
 		
 		void UpdateFallingLeaves();
 //		void UpdateLeafScaler();
 
 		void ToggleLeavesFalling(bool t);
 
+		void ResetLeaves();
 		
 		OWind wind_;
 

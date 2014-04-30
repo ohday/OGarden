@@ -344,7 +344,7 @@ PS_OUTPUT LeafPS(PS_INPUT input)
 //	output.color = tex2D(Dif, input.texCoord) * 0.8 + input.color * 0.2;
 
 	output.color = tex2D(Tex0, input.texco) * leafLerper[0] + tex2D(Tex1, input.texco) * leafLerper[1];	
-	clip(output.color.a - 0.1);	
+	clip(output.color.a - 0.5);	
 
 	return output;
 }

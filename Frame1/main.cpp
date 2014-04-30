@@ -8,7 +8,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 		if(window.LoadWindow("My Swanky Window", 350, 300, WIN_WIDTH, WIN_HEIGHT))
 		{
 //			window.LoadScene("tree0.fbx");
-			window.LoadScene("../data/scene/scene3.3ds");
+			window.LoadScene("../data/scene/garden2.3ds");
 			window.LoadTerrain(NULL, "../data/textures/grass.jpg");
 			window.LoadSky("../data/skybox");
 			return window.Run();
