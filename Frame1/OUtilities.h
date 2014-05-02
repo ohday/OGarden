@@ -133,15 +133,17 @@ namespace ohday
 
 	struct OLeafMotion
 	{
-		float pathS_, pathE_;
-		float scalar1_, scalar2_,  scalar_roll_;
-		float fallingV_;
-		float rollingW_;
-		float delayTime_;
+//		float pathS_, pathE_;
+		float delayTime_;		
+		
+		float rollW_;
+
 		float rotW_;
 
-		float pathXPhi_, pathXW_, pathXScaler_;
-		float pathZPhi_, pathZW_, pathZScaler_;
+		float yV_;
+
+		float xPhi_, xW_, xScaler_;
+		float zPhi_, zW_, zScaler_;
 	};
 
 

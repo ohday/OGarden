@@ -221,28 +221,28 @@ namespace ohday
 				lea.leafMotionParameters_.resize(lea.numLeaves_);
 				for(int j = 0; j < lea.numLeaves_; j++)
 				{
-					lea.leafMotionParameters_[j].pathS_ = randomDevice.GetFloatLine(0, 1.0f - PATH_MIN_LENGTH);
-					lea.leafMotionParameters_[j].pathE_ = randomDevice.GetFloatLine(lea.leafMotionParameters_[j].pathS_ + PATH_MIN_LENGTH, 1.0);
+//					lea.leafMotionParameters_[j].pathS_ = randomDevice.GetFloatLine(0, 1.0f - PATH_MIN_LENGTH);
+//					lea.leafMotionParameters_[j].pathE_ = randomDevice.GetFloatLine(lea.leafMotionParameters_[j].pathS_ + PATH_MIN_LENGTH, 1.0);
 
-					lea.leafMotionParameters_[j].scalar_roll_ = randomDevice.GetFloatLine(0.5f, 1.5f);
-					lea.leafMotionParameters_[j].scalar1_ = randomDevice.GetFloatLine(0.5f, 2.5f);
-					lea.leafMotionParameters_[j].scalar2_ = randomDevice.GetFloatLine(0.5f, 2.5f);
+//					lea.leafMotionParameters_[j].scalarRoll_ = randomDevice.GetFloatLine(0.5f, 1.5f);
+//					lea.leafMotionParameters_[j].scalar1_ = randomDevice.GetFloatLine(0.5f, 2.5f);
+//					lea.leafMotionParameters_[j].scalar2_ = randomDevice.GetFloatLine(0.5f, 2.5f);
 
-					lea.leafMotionParameters_[j].fallingV_ = randomDevice.GetFloatLine(1, 2);
+					lea.leafMotionParameters_[j].yV_ = randomDevice.GetFloatLine(1, 2);
 					
-					lea.leafMotionParameters_[j].delayTime_ = randomDevice.GetFloatLine(0, 15.0f);
+					lea.leafMotionParameters_[j].delayTime_ = randomDevice.GetFloatLine(0, 60.0f);
 
-					lea.leafMotionParameters_[j].rollingW_ = randomDevice.GetFloatLine(-4, 4);
+					lea.leafMotionParameters_[j].rollW_ = randomDevice.GetFloatLine(-4, 4);
 
 					lea.leafMotionParameters_[j].rotW_ = randomDevice.GetFloatLine(-4, 4);
 
-					lea.leafMotionParameters_[j].pathXScaler_ = randomDevice.GetFloatLine(-4, 4);
-					lea.leafMotionParameters_[j].pathXW_ = randomDevice.GetFloatLine(0.001f, 1.0f);
-					lea.leafMotionParameters_[j].pathXPhi_ = randomDevice.GetFloatLine(0, 2 * FLOAT_PI);
+					lea.leafMotionParameters_[j].xScaler_ = randomDevice.GetFloatLine(-1, 1);
+					lea.leafMotionParameters_[j].xW_ = randomDevice.GetFloatLine(0.001f, 1.0f);
+					lea.leafMotionParameters_[j].xPhi_ = randomDevice.GetFloatLine(0, 2 * FLOAT_PI);
 
-					lea.leafMotionParameters_[j].pathZScaler_ = randomDevice.GetFloatLine(-4, 4);
-					lea.leafMotionParameters_[j].pathZW_ = randomDevice.GetFloatLine(0.001f, 1.0f);
-					lea.leafMotionParameters_[j].pathZPhi_ = randomDevice.GetFloatLine(0, 2 * FLOAT_PI);
+					lea.leafMotionParameters_[j].zScaler_ = randomDevice.GetFloatLine(-1, 1);
+					lea.leafMotionParameters_[j].zW_ = randomDevice.GetFloatLine(0.001f, 1.0f);
+					lea.leafMotionParameters_[j].zPhi_ = randomDevice.GetFloatLine(0, 2 * FLOAT_PI);
 
 
 

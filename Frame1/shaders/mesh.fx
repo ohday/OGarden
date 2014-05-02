@@ -18,6 +18,21 @@ struct OLight
 	float4 direction;
 };
 
+struct OLeafMotion
+{
+	float delayTime;
+	float rollW;
+	float rotW;	
+	float yV;
+	
+	float xPhi, xW, xScalar;
+	float zPhi, zW, zScalar;
+};
+
+
+
+
+
 struct VS_INPUT
 {
 	float4 position : POSITION;
@@ -55,8 +70,6 @@ struct VS_INPUT_LEAF
 };
 
 
-
-
 struct VS_INPUT_SKY
 {
 	float4 position : POSITION;
@@ -85,6 +98,9 @@ struct PS_OUTPUT_SKY
 
 OMaterial mtrl;
 OLight light;
+
+OLeafMotion leafMotionParas;
+float fallTime;
 
 float4 camera_position;
 
@@ -295,6 +311,20 @@ PS_OUTPUT_SKY SkyPS(PS_INPUT_SKY input)
 // 树叶的shader
 VS_OUTPUT LeafVS(VS_INPUT_LEAF input)
 {
+/*	float3 leafCenter;
+
+	OLeafMotion lm = leafMotionParas;
+
+	
+	leafCenter.z = input.center.z - lm.yv * fallTime;
+	
+	leafCenter.x = input.center.x + (lm.xScalar / lm.xW) * (cos(lm.xPhi) - cos(lm.xW * fallTime + lm.xPhi));
+	leafCenter.x = input.center.x + (lm.xScalar / lm.xW) * (cos(lm.xPhi) - cos(lm.xW * fallTime + lm.xPhi));
+	
+
+*/
+
+
 	float3 onor = normalize(input.normal.xyz);
 	
 	float3 up = float3(0, 0, 1);

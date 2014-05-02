@@ -726,7 +726,7 @@ namespace ohday
 
 		float seconds = float(currentTimeClock - timeFallingStart_) / CLOCKS_PER_SEC;
 
-		float windStrength = wind_.GetStrength(seconds) * 0.1;
+		float windStrength = wind_.GetStrength(seconds);
 //		float windStrength = 0.1;
 
 
@@ -763,12 +763,12 @@ namespace ohday
 						
 						// 垂直方向（对树叶来说是z方向），匀速下落, 
 			//			pVertex[t].cz_ = pLeaves->originalVertices_[t].cz_ - pLeafMotion->fallingV_ * fallTime;
-						pVertex[t].cz_ -= pLeafMotion->fallingV_ * lastSeconds;
+						pVertex[t].cz_ -= pLeafMotion->yV_ * lastSeconds;
 
 
 						// xy平面，遵循轨迹
-						float vx = pLeafMotion->pathXScaler_ * sin(pLeafMotion->pathXW_ * fallTime + pLeafMotion->pathXPhi_);
-						float vz = pLeafMotion->pathZScaler_ * sin(pLeafMotion->pathZW_ * fallTime + pLeafMotion->pathZPhi_);
+						float vx = pLeafMotion->xScaler_ * sin(pLeafMotion->xW_ * fallTime + pLeafMotion->xPhi_);
+						float vz = pLeafMotion->zScaler_ * sin(pLeafMotion->zW_ * fallTime + pLeafMotion->zPhi_);
 
 						pVertex[t].cx_ += vx * lastSeconds;
 						pVertex[t].cy_ += vz * lastSeconds;
@@ -787,7 +787,7 @@ namespace ohday
 //						pVertex[t].cy_ = pLeaves->originalVertices_[t].cy_ + pLeafMotion->scalar2_ * (scene_->leafPath_[1][pathIndex] - scene_->leafPath_[1][pathStart]);
 
 						// 翻滚运动
-						pVertex[t].beta_ = pLeafMotion->rollingW_ * fallTime;
+						pVertex[t].beta_ = pLeafMotion->rollW_ * fallTime;
 						pVertex[t].alpha_ = pLeafMotion->rotW_ * fallTime;
 
 
