@@ -228,9 +228,9 @@ namespace ohday
 //					lea.leafMotionParameters_[j].scalar1_ = randomDevice.GetFloatLine(0.5f, 2.5f);
 //					lea.leafMotionParameters_[j].scalar2_ = randomDevice.GetFloatLine(0.5f, 2.5f);
 
-					lea.leafMotionParameters_[j].yV_ = randomDevice.GetFloatLine(1, 2);
+					lea.leafMotionParameters_[j].yV_ = randomDevice.GetFloatLine(0.5, 1);
 					
-					lea.leafMotionParameters_[j].delayTime_ = randomDevice.GetFloatLine(0, 60.0f);
+					lea.leafMotionParameters_[j].delayTime_ = randomDevice.GetFloatLine(0, LEAF_FALLING_TIME);
 
 					lea.leafMotionParameters_[j].rollW_ = randomDevice.GetFloatLine(-4, 4);
 
@@ -273,6 +273,9 @@ namespace ohday
 
 				for(int i = 0; i < pMesh->mNumFaces / 8; i++)
 				{
+					OLeafMotion * pLeafMotion = &lea.leafMotionParameters_[i];
+
+
 					D3DXVECTOR3 centerLoc(0, 0, 0);
 					D3DXVECTOR3 centerNor(0, 0, 0);
 
@@ -326,13 +329,28 @@ namespace ohday
 							v[t].ovy_ = pMesh->mVertices[t][1] - centerLoc[1];
 							v[t].ovz_ = pMesh->mVertices[t][2] - centerLoc[2];
 							 
-							v[t].alpha_ = 0;
-							v[t].scalar_ = 1;
+//							v[t].alpha_ = 0;
+//							v[t].scalar_ = 1;
 
 							v[t].u_ = pMesh->mTextureCoords[0][t].x;
 							v[t].v_ = pMesh->mTextureCoords[0][t].y;
 
-							v[t].beta_ = 0;
+//							v[t].beta_ = 0;
+
+							v[t].rollW_ = pLeafMotion->rollW_;
+							v[t].rotW_ = pLeafMotion->rotW_;
+
+							v[t].delayTime_ = pLeafMotion->delayTime_;
+							v[t].yV_ = pLeafMotion->yV_;
+
+							v[t].xPhi_ = pLeafMotion->xPhi_;
+							v[t].xW_ = pLeafMotion->xW_;
+							v[t].xScalar_ = pLeafMotion->xScaler_;
+
+							v[t].zPhi_ = pLeafMotion->zPhi_;
+							v[t].zW_ = pLeafMotion->zW_;
+							v[t].zScalar_ = pLeafMotion->zScaler_;
+
 
 							lea.originalVertices_[t] = v[t];
 						}				

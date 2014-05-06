@@ -18,18 +18,6 @@ struct OLight
 	float4 direction;
 };
 
-struct OLeafMotion
-{
-	float delayTime;
-	float rollW;
-	float rotW;	
-	float yV;
-	
-	float xPhi, xW, xScalar;
-	float zPhi, zW, zScalar;
-};
-
-
 
 
 
@@ -62,11 +50,15 @@ struct VS_INPUT_LEAF
 {
 	float4 center	:	POSITION;
 	float4 normal	:	NORMAL;
-	float2 texco 	:	TEXCOORD0;
+	float2 texco 	:	TEXCOORD0;	// uv
 	
-	float2 para1 	:	TEXCOORD1;	// alpha_, scalar_
-	float2 para2	:	TEXCOORD2;	// ovx_, ovy_
-	float2 para3	:	TEXCOORD3;	// ovz_, beta_;	
+	float2 para1 	:	TEXCOORD1;	// rotW, rollW
+	float2 para2	:	TEXCOORD2;	// yV, delatyTime
+	float2 para3	:	TEXCOORD3;	// xPhi, zPhi
+	float2 para4	:	TEXCOORD4;	// xW, zW
+	float2 para5	:	TEXCOORD5;	// xScalar, zScalar
+	float2 para6	:	TEXCOORD6;	// ovx, ovy
+	float2 para7	:	TEXCOORD7;	// ovz, temp
 };
 
 
@@ -96,26 +88,27 @@ struct PS_OUTPUT_SKY
 
 
 
-OMaterial mtrl;
-OLight light;
+OMaterial mtrl;					// 材质
+OLight light;					// 光照
 
-OLeafMotion leafMotionParas;
-float fallTime;
+float leafScalar;				// 树叶放缩因子
+float leafFallTime;				// 树叶飘落时间
+float4 wind;					// 风
 
-float4 camera_position;
+float4 camera_position;			// 摄像机位置
 
-matrix worldMatrix;
-matrix viewMatrix;
-matrix projMatrix;
+matrix worldMatrix;				// 世界矩阵
+matrix viewMatrix;				// 观察矩阵
+matrix projMatrix;				// 投影矩阵
 
-matrix invMVP;
-matrix skyRotation;
+matrix invMVP;					// 反mvp矩阵
+matrix skyRotation;				// 天空盒旋转矩阵
 
-float4 skyLerper;
-float4 leafLerper;
+float4 skyLerper;				// 天空纹理lerper
+float4 leafLerper;				// 树叶纹理lerper
 
 // textures
-Texture t0, t1;
+Texture t0, t1;					
 sampler2D Tex0 = sampler_state {
 	Texture = <t0>;
 	MinFilter = LINEAR;
@@ -209,6 +202,22 @@ matrix RotAxisAngle(float3 axis, float angle)
 	return m;
 }
 
+// 风的计算
+float WindMotion(float t)
+{
+	// 调参后的风函数为：-1.04072 + 1.9 x - 2.7864 Cos[0.24 x] + 1.92712 Cos[0.6 x] + 0.861934 Sin[0.24 x] + 0.534998 Sin[0.6 x]
+	
+	// p用来调整多大范围在前进方向，[0~1.9],w调整风强
+	float p = 1.1, w = 0.3;
+	
+	
+	
+	float ret = -1.04072 + p*t - 2.7864*cos(0.24*t) + 1.92712*cos(0.6*t) + 0.861934*sin(0.24*t) + 0.534998*sin(0.6*t);
+	
+	// 我们调整一下风强
+	ret *= 0.4;
+	return ret;
+}
 
 
 
@@ -309,64 +318,150 @@ PS_OUTPUT_SKY SkyPS(PS_INPUT_SKY input)
 
 
 // 树叶的shader
+
 VS_OUTPUT LeafVS(VS_INPUT_LEAF input)
 {
-/*	float3 leafCenter;
 
-	OLeafMotion lm = leafMotionParas;
-
-	
-	leafCenter.z = input.center.z - lm.yv * fallTime;
-	
-	leafCenter.x = input.center.x + (lm.xScalar / lm.xW) * (cos(lm.xPhi) - cos(lm.xW * fallTime + lm.xPhi));
-	leafCenter.x = input.center.x + (lm.xScalar / lm.xW) * (cos(lm.xPhi) - cos(lm.xW * fallTime + lm.xPhi));
-	
-
-*/
+	float t = leafFallTime - input.para2.y;
+	if(t < 0)
+		t = 0;
 
 
-	float3 onor = normalize(input.normal.xyz);
+	float xPhi = input.para3.x, zPhi = input.para3.y;
+	float xW = input.para4.x, zW = input.para4.y;	
+	float xScalar = input.para5.x, zScalar = input.para5.y;
+
+
+	float4 leafCenter_World = mul(input.center, worldMatrix);
 	
-	float3 up = float3(0, 0, 1);
-	
-	float3 axis;
-	
-	if(length(onor - up) < FLOAT_ZERO)
-		axis = float3(1, 0, 0);
+	float3 leafNormal_World = normalize(mul(input.normal, worldMatrix).xyz);
+	float3 up_World = float3(0, 1, 0);
+	float3 axis_World;	
+	if(length(leafNormal_World - up_World) < FLOAT_ZERO)
+		axis_World = float3(1, 0, 0);
 	else
-		axis = normalize(cross(onor, up));
+		axis_World = normalize(cross(leafNormal_World, up_World));
 	
-	float alpha = input.para1.x;
-	matrix mr = RotAxisAngle(onor, alpha);
+	// 匀速直线向下
+	float realHeight = leafCenter_World.y - (t * input.para2.x);
 	
-	
-	float beta = input.para3.y;
-	matrix mn = RotAxisAngle(axis, beta);
+	// 判断是否已经落到地面，这里后面可以加入渐渐消失的特效
+	// 同时，这里只是将y高度为0作为停止条件，后期希望可以加上高度场的贴图，判断是否大于贴图中该值
+	if(realHeight < 0)
+	{
+		t = leafCenter_World.y / input.para2.x;
+//		t = 0;
+		leafCenter_World.y = 0;
+	}
+	else
+	{
+		leafCenter_World.y = realHeight;
+	}
+		
+	// xz方向
+	leafCenter_World.x = leafCenter_World.x + (xScalar / xW) * (cos(xPhi) - cos(xW * t + xPhi));
+	leafCenter_World.z = leafCenter_World.z + (zScalar / zW) * (cos(zPhi) - cos(zW * t + zPhi));
 
+	// 风：
+	float windDis = WindMotion(input.para2.y + t) - WindMotion(input.para2.y);
+	leafCenter_World.x += (windDis * wind.x);
+	leafCenter_World.z += (windDis * wind.z);
+	
+	// rotation
+	float alpha = input.para1.x * t;
+	matrix mr = RotAxisAngle(leafNormal_World.xyz, alpha);
+	
+	// roll
+	float beta = input.para1.y * t;
+	matrix mn = RotAxisAngle(axis_World, beta);
+	
+	// compute
+	float3 ov = float3(input.para6.x, input.para6.y, input.para7.x);
+	ov *= leafScalar;
+	
+	ov = mul(ov, worldMatrix);
 
-	
-	float3 ov = float3(input.para2.x, input.para2.y, input.para3.x);
-	
-//	ov = mul(ov, mul(mn, mr));
-	ov = mul(ov, mul(mr,mn));
-//	ov = mul(ov, mn);
-	
-	ov *= input.para1.y;
+	ov = mul(ov, mul(mr, mn));
 	
 	float4 pos;
-	pos.xyz = input.center.xyz + ov;
+	pos.xyz = leafCenter_World.xyz + ov;
 	pos.w = 1;
 	
-	VS_OUTPUT output = (VS_OUTPUT)0;		
-	matrix mvpMatrix = mul(mul(worldMatrix, viewMatrix), projMatrix);
-	output.position = mul(pos, mvpMatrix);
+	VS_OUTPUT ret = (VS_OUTPUT)0;		
+	matrix vpMatrix = mul(viewMatrix, projMatrix);
 	
-	output.texco.x = input.texco.x;
-	output.texco.y = 1 - input.texco.y;
+	ret.position = mul(pos, vpMatrix);
 	
-	return output;
-
+	ret.texco.x = input.texco.x;
+	ret.texco.y = 1 - input.texco.y;
+	
+	return ret;
 }
+
+// VS_OUTPUT LeafVS(VS_INPUT_LEAF input)
+// {
+	
+
+
+
+
+
+// /*	float3 leafCenter;
+
+	// OLeafMotion lm = leafMotionParas;
+
+	
+	// leafCenter.z = input.center.z - lm.yv * fallTime;
+	
+	// leafCenter.x = input.center.x + (lm.xScalar / lm.xW) * (cos(lm.xPhi) - cos(lm.xW * fallTime + lm.xPhi));
+	// leafCenter.x = input.center.x + (lm.xScalar / lm.xW) * (cos(lm.xPhi) - cos(lm.xW * fallTime + lm.xPhi));
+	
+
+// */
+
+
+	// float3 onor = normalize(input.normal.xyz);
+	
+	// float3 up = float3(0, 0, 1);
+	
+	// float3 axis;
+	
+	// if(length(onor - up) < FLOAT_ZERO)
+		// axis = float3(1, 0, 0);
+	// else
+		// axis = normalize(cross(onor, up));
+	
+	// float alpha = input.para1.x;
+	// matrix mr = RotAxisAngle(onor, alpha);
+	
+	
+	// float beta = input.para3.y;
+	// matrix mn = RotAxisAngle(axis, beta);
+
+
+	
+	// float3 ov = float3(input.para2.x, input.para2.y, input.para3.x);
+	
+	////ov = mul(ov, mul(mn, mr));
+	// ov = mul(ov, mul(mr,mn));
+	////ov = mul(ov, mn);
+	
+	// ov *= input.para1.y;
+	
+	// float4 pos;
+	// pos.xyz = input.center.xyz + ov;
+	// pos.w = 1;
+	
+	// VS_OUTPUT output = (VS_OUTPUT)0;		
+	// matrix mvpMatrix = mul(mul(worldMatrix, viewMatrix), projMatrix);
+	// output.position = mul(pos, mvpMatrix);
+	
+	// output.texco.x = input.texco.x;
+	// output.texco.y = 1 - input.texco.y;
+	
+	// return output;
+
+// }
 
 PS_OUTPUT LeafPS(PS_INPUT input)
 {

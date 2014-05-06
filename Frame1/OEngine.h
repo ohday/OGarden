@@ -50,13 +50,11 @@ namespace ohday
 
 		void UpdateLeaves();
 
-		void UpdateLeafBuffer();
-
 		void UpdateLeafParameters();
 
 		void UpdateLeafTextureLerper();
 		
-		void UpdateFallingLeaves();
+//		void UpdateFallingLeaves();
 //		void UpdateLeafScaler();
 
 		void ToggleLeavesFalling(bool t);

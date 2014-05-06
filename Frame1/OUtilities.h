@@ -20,10 +20,13 @@ using namespace std;
 
 #define FLOAT_PI 3.141592653f
 
+#define LEAF_FALLING_TIME 120
+
+
 namespace ohday
 {	
 	const DWORD FVFVER = D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1;
-	const DWORD FVFLEAF = D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX4;
+	const DWORD FVFLEAF = D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX8;
 
 	struct OVertex
 	{
@@ -49,19 +52,32 @@ namespace ohday
 		}
 	};
 
-	struct OLeafVertex
-	{
-		float cx_, cy_, cz_;	// center
-		float nx_, ny_, nz_;	// normal
-		
-		float u_, v_;			// uv
-		float alpha_, scalar_;	// rotation angle
+	//struct OLeafVertex
+	//{
+	//	float cx_, cy_, cz_;	// center
+	//	float nx_, ny_, nz_;	// normal
+	//	
+	//	float u_, v_;			// uv
+	//	float alpha_, scalar_;	// rotation angle
 
-		float ovx_, ovy_;		
-		float ovz_, beta_;
-	};
+	//	float ovx_, ovy_;		
+	//	float ovz_, beta_;
+	//};
 
+ 	struct OLeafVertex
+ 	{
+ 		float cx_, cy_, cz_;		// center
+ 		float nx_, ny_, nz_;		// normal	
 
+ 		float u_, v_;				// TEX1
+ 		float rotW_, rollW_;		// TEX2
+ 		float yV_, delayTime_;		// TEX3
+ 		float xPhi_, zPhi_;			// TEX4
+ 		float xW_, zW_;				// TEX5
+ 		float xScalar_, zScalar_;	// TEX6
+ 		float ovx_, ovy_;			// TEX7
+ 		float ovz_, temp_;			// TEX8
+ 	};
 
 	struct OMaterial
 	{
