@@ -19,8 +19,6 @@ struct OLight
 };
 
 
-
-
 struct VS_INPUT
 {
 	float4 position : POSITION;
@@ -61,7 +59,6 @@ struct VS_INPUT_LEAF
 	float2 para7	:	TEXCOORD7;	// ovz, temp
 };
 
-
 struct VS_INPUT_SKY
 {
 	float4 position : POSITION;
@@ -85,6 +82,21 @@ struct PS_OUTPUT_SKY
 	float4 color : COLOR0;
 };
 
+struct VS_INPUT_PARTICLE
+{
+	float4 position	:	POSITION;
+	float4 vel		:	NORMAL;
+	
+	float2 para1	:	TEXCOORD0;
+	float2 para2	:	TEXCOORD1;
+};
+
+struct VS_OUTPUT_PARTICLE
+{
+	float4 position	:	POSITION;
+	float2 texco	:	TEXCOORD0;
+	float size		:	PSIZE;	
+};
 
 
 
@@ -94,6 +106,8 @@ OLight light;					// 光照
 float leafScalar;				// 树叶放缩因子
 float leafFallTime;				// 树叶飘落时间
 float4 wind;					// 风
+
+float weatherTime;
 
 float4 camera_position;			// 摄像机位置
 
@@ -106,6 +120,8 @@ matrix skyRotation;				// 天空盒旋转矩阵
 
 float4 skyLerper;				// 天空纹理lerper
 float4 leafLerper;				// 树叶纹理lerper
+
+int viewportWidth;
 
 // textures
 Texture t0, t1;					
@@ -208,7 +224,7 @@ float WindMotion(float t)
 	// 调参后的风函数为：-1.04072 + 1.9 x - 2.7864 Cos[0.24 x] + 1.92712 Cos[0.6 x] + 0.861934 Sin[0.24 x] + 0.534998 Sin[0.6 x]
 	
 	// p用来调整多大范围在前进方向，[0~1.9],w调整风强
-	float p = 1.1, w = 0.3;
+	float p = 1.1, w = 0.5;
 	
 	
 	
@@ -398,70 +414,6 @@ VS_OUTPUT LeafVS(VS_INPUT_LEAF input)
 	return ret;
 }
 
-// VS_OUTPUT LeafVS(VS_INPUT_LEAF input)
-// {
-	
-
-
-
-
-
-// /*	float3 leafCenter;
-
-	// OLeafMotion lm = leafMotionParas;
-
-	
-	// leafCenter.z = input.center.z - lm.yv * fallTime;
-	
-	// leafCenter.x = input.center.x + (lm.xScalar / lm.xW) * (cos(lm.xPhi) - cos(lm.xW * fallTime + lm.xPhi));
-	// leafCenter.x = input.center.x + (lm.xScalar / lm.xW) * (cos(lm.xPhi) - cos(lm.xW * fallTime + lm.xPhi));
-	
-
-// */
-
-
-	// float3 onor = normalize(input.normal.xyz);
-	
-	// float3 up = float3(0, 0, 1);
-	
-	// float3 axis;
-	
-	// if(length(onor - up) < FLOAT_ZERO)
-		// axis = float3(1, 0, 0);
-	// else
-		// axis = normalize(cross(onor, up));
-	
-	// float alpha = input.para1.x;
-	// matrix mr = RotAxisAngle(onor, alpha);
-	
-	
-	// float beta = input.para3.y;
-	// matrix mn = RotAxisAngle(axis, beta);
-
-
-	
-	// float3 ov = float3(input.para2.x, input.para2.y, input.para3.x);
-	
-	////ov = mul(ov, mul(mn, mr));
-	// ov = mul(ov, mul(mr,mn));
-	////ov = mul(ov, mn);
-	
-	// ov *= input.para1.y;
-	
-	// float4 pos;
-	// pos.xyz = input.center.xyz + ov;
-	// pos.w = 1;
-	
-	// VS_OUTPUT output = (VS_OUTPUT)0;		
-	// matrix mvpMatrix = mul(mul(worldMatrix, viewMatrix), projMatrix);
-	// output.position = mul(pos, mvpMatrix);
-	
-	// output.texco.x = input.texco.x;
-	// output.texco.y = 1 - input.texco.y;
-	
-	// return output;
-
-// }
 
 PS_OUTPUT LeafPS(PS_INPUT input)
 {
@@ -473,6 +425,47 @@ PS_OUTPUT LeafPS(PS_INPUT input)
 
 	return output;
 }
+
+// 雨的shader
+VS_OUTPUT_PARTICLE RainVS(VS_INPUT_PARTICLE input)
+{	
+	float initialSize = input.para1.x;
+	float initialTime = input.para1.y;
+
+
+	float4 currentPos = input.position;	
+	currentPos.xyz += camera_position.xyz;
+	
+	
+	float t = weatherTime - initialTime;
+//	currentPos.y = currentPos.y - 5*t;
+	currentPos.xyz = currentPos.xyz + input.vel.xyz * t + 0.5 * float3(0, -9.8, 0) * t * t;
+	
+	
+	float windDis = WindMotion(weatherTime) - WindMotion(initialTime);
+	currentPos.x += (0.5 * windDis * wind.x);
+	currentPos.z += (0.5 * windDis * wind.z);
+	
+	
+	VS_OUTPUT_PARTICLE ret = (VS_OUTPUT_PARTICLE)0;
+	ret.position = mul(currentPos, mul(worldMatrix, mul(viewMatrix, projMatrix)));
+	
+	ret.size = initialSize * viewportWidth * 0.001f;
+	
+	return ret;
+}
+
+PS_OUTPUT RainPS(PS_INPUT input)
+{
+	PS_OUTPUT ret = (PS_OUTPUT)0;
+	ret.color = tex2D(Tex0, input.texco);
+	
+//	clip(ret.color.x - 0.5);
+	
+	return ret;	
+}
+
+
 
 
 technique Tech
@@ -505,6 +498,23 @@ technique Tech
 		PixelShader = compile ps_3_0 LeafPS();
 		
 		CullMode = NONE;
+	}
+	
+	pass P4
+	{
+		VertexShader = compile vs_3_0 RainVS();
+		PixelShader = compile ps_3_0 RainPS();
+		
+		PointSpriteEnable = true;
+//		AlphaTestEnable = true;
+//		AlphaRef = 100;
+//		AlphaFunc = GreaterEqual;
+		
+		AlphaBlendEnable = true;
+		SrcBlend = One;
+		DestBlend = One;
+		BlendOp = ADD;
+
 	}
 }
 

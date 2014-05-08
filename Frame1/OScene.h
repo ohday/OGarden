@@ -29,7 +29,7 @@ namespace ohday
 
 
 		vector<vector<float>> leafPath_;
-		
+
 		vector<bool> bLeaves_;
 
 		const aiScene * scene_;

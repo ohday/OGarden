@@ -228,8 +228,8 @@ namespace ohday
 //					lea.leafMotionParameters_[j].scalar1_ = randomDevice.GetFloatLine(0.5f, 2.5f);
 //					lea.leafMotionParameters_[j].scalar2_ = randomDevice.GetFloatLine(0.5f, 2.5f);
 
-					lea.leafMotionParameters_[j].yV_ = randomDevice.GetFloatLine(0.5, 1);
-					
+					lea.leafMotionParameters_[j].yV_ = randomDevice.GetFloatLine(0.8f, 1.3f);
+
 					lea.leafMotionParameters_[j].delayTime_ = randomDevice.GetFloatLine(0, LEAF_FALLING_TIME);
 
 					lea.leafMotionParameters_[j].rollW_ = randomDevice.GetFloatLine(-4, 4);

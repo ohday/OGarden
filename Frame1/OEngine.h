@@ -4,6 +4,9 @@
 #include "OScene.h"
 #include "SUtilities.h"
 
+#include "OPSystem.h"
+
+#define NUM_RAIN_PARTICLES 7000
 
 namespace ohday
 {
@@ -31,37 +34,39 @@ namespace ohday
 	private:
 		bool InitDirect3DObject();
 		bool InitialShaders();
+		bool InitialWeather();
 
 		void UpdateView();
 		void UpdateTime();
 
 
 		void RenderTerrain();
-
 		void RenderMesh();
-
 		void RecursiveRender(aiNode *node, D3DXMATRIX releMat);
-
 		void RenderSky();
+		void RenderWeather();
 
-		POINT GetMousePostion();
 
 		void UpdateSkyLerper();
-
 		void UpdateLeaves();
-
 		void UpdateLeafParameters();
-
 		void UpdateLeafTextureLerper();
-		
+		void UpdateWeather();		
+
 //		void UpdateFallingLeaves();
 //		void UpdateLeafScaler();
 
 		void ToggleLeavesFalling(bool t);
-
 		void ResetLeaves();
+		POINT GetMousePostion();
 		
+
+
+
 		OWind wind_;
+
+		ORainPSystem *pRain_;
+
 
 		float dayTime_;
 		float yearTime_;

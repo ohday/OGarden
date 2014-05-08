@@ -78,12 +78,14 @@
     <ClCompile Include="Application.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="OEngine.cpp" />
+    <ClCompile Include="OPSystem.cpp" />
     <ClCompile Include="OScene.cpp" />
     <ClCompile Include="OTerrain.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h" />
     <ClInclude Include="OEngine.h" />
+    <ClInclude Include="OPSystem.h" />
     <ClInclude Include="OScene.h" />
     <ClInclude Include="OTerrain.h" />
     <ClInclude Include="OUtilities.h" />

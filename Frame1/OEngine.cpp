@@ -23,6 +23,8 @@ namespace ohday
 		yearTime_ = 0.5f;
 
 		isLeavesFalling_ = false;
+
+
 	}
 
 
@@ -68,6 +70,27 @@ namespace ohday
 		d3dDevice_->SetRenderState(D3DRS_ZENABLE, TRUE);
 		d3dDevice_->SetRenderState(D3DRS_ZFUNC, D3DCMP_LESS);
 		d3dDevice_->SetRenderState(D3DRS_ZWRITEENABLE, TRUE);
+
+
+		InitialWeather();
+
+		return true;
+	}
+
+	bool OEngine::InitialWeather()
+	{
+		HRESULT hr = S_OK;
+
+
+		pRain_ = new ORainPSystem(NUM_RAIN_PARTICLES, 0.0001f);
+
+
+ 		hr = d3dDevice_->CreateVertexBuffer(
+ 				NUM_RAIN_PARTICLES * sizeof(OParticle),
+				D3DUSAGE_DYNAMIC | D3DUSAGE_POINTS | D3DUSAGE_WRITEONLY,
+				FVFPARTICLE, D3DPOOL_DEFAULT, &pRain_->vertexBuffer_, 0);
+
+		D3DXCreateTextureFromFile(d3dDevice_, "../data/textures/rain.bmp", &pRain_->texture_);
 
 		return true;
 	}
@@ -117,7 +140,7 @@ namespace ohday
 		UpdateTime();
 
 		UpdateLeaves();
-
+		UpdateWeather();
 
 		static D3DXHANDLE hLeafLerper = meshEffect_->GetParameterByName(0, "leafLerper");
 		meshEffect_->SetVector(hLeafLerper, &leafLerper_);
@@ -136,6 +159,8 @@ namespace ohday
 		RenderSky();
 
 		RenderMesh();
+
+		RenderWeather();
 
 		meshEffect_->End();
 		d3dDevice_->EndScene();
@@ -347,6 +372,46 @@ namespace ohday
 		}
 
 
+	}
+
+	void OEngine::RenderWeather()
+	{
+		static D3DXHANDLE hCamera = meshEffect_->GetParameterByName(0, "camera_position");
+		HRESULT hr = meshEffect_->SetVector(hCamera, &cameraPosition_);
+
+		static D3DXHANDLE hLight = meshEffect_->GetParameterByName(0, "light");
+		hr = meshEffect_->SetRawValue(hLight, &light_, 0, sizeof(OLight));
+
+		static D3DXHANDLE hWorldMatrix = meshEffect_->GetParameterByName(0, "worldMatrix");
+		D3DXMATRIX worldMatrix;
+		D3DXMatrixIdentity(&worldMatrix);
+		hr = meshEffect_->SetMatrix(hWorldMatrix, &worldMatrix);
+
+		static D3DXHANDLE hViewMatrix = meshEffect_->GetParameterByName(0, "viewMatrix");
+		hr = meshEffect_->SetMatrix(hViewMatrix, &viewMatrix_);
+
+		static D3DXHANDLE hDifTexture = meshEffect_->GetParameterByName(0, "t0");
+		hr = meshEffect_->SetTexture(hDifTexture, pRain_->texture_);
+
+		static D3DXHANDLE hViewportWidth = meshEffect_->GetParameterByName(0, "viewportWidth");
+		hr = meshEffect_->SetInt(hViewportWidth, WIN_WIDTH);
+
+		hr = d3dDevice_->SetFVF(FVFPARTICLE);
+		hr = d3dDevice_->SetStreamSource(0, pRain_->vertexBuffer_, 0, sizeof(OParticle));	
+
+
+		// 更新vertexbuffer，其中包含所有存活着的粒子
+		OParticle * p = 0;
+		hr = pRain_->vertexBuffer_->Lock(0, 0, (void**)&p, D3DLOCK_DISCARD);
+		for(int i = 0; i < pRain_->aliveParticles_.size(); i++)
+		{
+			p[i] = pRain_->particles_[pRain_->aliveParticles_[i]];
+		}
+		hr = pRain_->vertexBuffer_->Unlock();
+
+		hr = meshEffect_->BeginPass(4);
+			hr = d3dDevice_->DrawPrimitive(D3DPT_POINTLIST, 0, pRain_->aliveParticles_.size());
+		meshEffect_->EndPass();
 	}
 
 
@@ -598,6 +663,41 @@ namespace ohday
 		
 
 	}
+
+	void OEngine::UpdateWeather()
+	{
+		HRESULT hr = S_OK;
+
+		static bool bRainy = false;
+		static float currentTime = 0;
+		static time_t lastTic;
+
+		if((GetAsyncKeyState('R') & 0x8000f) && !bRainy)
+		{
+			pRain_->InitialSystem();
+			currentTime = 0;
+			lastTic = clock();
+
+			bRainy = !bRainy;
+		}
+
+		if(bRainy)
+		{
+			time_t currentTic = clock();
+
+			float dt = float(currentTic - lastTic) / CLOCKS_PER_SEC;
+			pRain_->Update(dt);
+
+			currentTime += dt;
+
+			static D3DXHANDLE hWeatherTime = meshEffect_->GetParameterByName(0, "weatherTime");
+			hr = meshEffect_->SetFloat(hWeatherTime, pRain_->currentTime_);
+			lastTic = currentTic;
+		}
+
+
+	}
+
 
 
 
